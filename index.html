@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fluxo CSP4</title>
+<link rel="icon" href="corksupply-icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Roboto+Slab:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{color-scheme:light;}
+  :root{
+    --bg:#F4F4F4; --surface:#FFFFFF; --surface-2:#ECEAE6; --ink:#302E2D; --ink-dim:#746F6D; --line:#D9D6D2;
+    --accent:#467D3C; --accent-ink:#FFFFFF;
+    --good:#467D3C; --good-bg:#E7F0E3; --warn:#B5790E; --warn-bg:#FBF0DA; --bad:#B23A2A; --bad-bg:#F8E4E0; --info:#3D6E8C; --info-bg:#E4EEF3;
+    --shadow:0 1px 2px rgba(48,46,45,.07),0 4px 14px rgba(48,46,45,.08);
+    --radius:10px;
+    --font-display:'Roboto Slab',Georgia,serif; --font-body:'IBM Plex Sans',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1E1C1B; --surface:#282624; --surface-2:#302E2C; --ink:#EDEAE5; --ink-dim:#A79E96; --line:#46423F;
+      --accent:#7FB56E; --accent-ink:#16240F;
+      --good:#6FBE63; --good-bg:#17301A; --warn:#E0AE4C; --warn-bg:#3A2E10; --bad:#E2705F; --bad-bg:#3A1C17; --info:#7EB3D1; --info-bg:#122C38;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 18px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1E1C1B; --surface:#282624; --surface-2:#302E2C; --ink:#EDEAE5; --ink-dim:#A79E96; --line:#46423F;
+    --accent:#7FB56E; --accent-ink:#16240F;
+    --good:#6FBE63; --good-bg:#17301A; --warn:#E0AE4C; --warn-bg:#3A2E10; --bad:#E2705F; --bad-bg:#3A1C17; --info:#7EB3D1; --info-bg:#122C38;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 18px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);padding-inline:16px;font-size:14px;}
+  h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;}
+  button{font-family:inherit;}
+  .mono{font-family:var(--font-mono);}
+  ::selection{background:var(--accent);color:var(--accent-ink);}
+  img{max-width:100%;}
+
+  .app{max-width:1400px;margin:0 auto;padding-block:16px 40px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{position:sticky;top:0;z-index:20;background:var(--bg);padding-block:10px;margin-bottom:14px;border-bottom:1px solid var(--line);}
+  .topbar-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;}
+  .brand{display:flex;align-items:center;gap:9px;margin-right:6px;}
+  .brand-mark{width:26px;height:26px;display:block;}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand-mark{filter:contrast(.83) brightness(1.7);} }
+  :root[data-theme="dark"] .brand-mark{filter:contrast(.83) brightness(1.7);}
+  .brand h1{font-size:20px;font-weight:700;}
+  .views{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px;}
+  .view-btn{border:none;background:transparent;color:var(--ink-dim);padding:6px 14px;border-radius:999px;font-weight:600;font-size:13px;cursor:pointer;}
+  .view-btn.active{background:var(--surface);color:var(--ink);box-shadow:var(--shadow);}
+  .spacer{flex:1;}
+  input[type="search"],input[type="text"],input[type="email"],input[type="password"],select,.field input,.field select,.field textarea{
+    font-family:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  }
+  input[type="search"]{min-width:200px;}
+  .btn{border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;font-size:13px;padding:7px 14px;cursor:pointer;}
+  .btn:hover{border-color:var(--ink-dim);}
+  .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;border-radius:0 999px 999px 0;padding-inline:16px 18px;letter-spacing:.02em;}
+  .btn.primary:hover{filter:brightness(1.06);}
+  .btn.danger{color:var(--bad);}
+  .btn.small{padding:4px 10px;font-size:12px;}
+  .author{display:flex;align-items:center;gap:6px;color:var(--ink-dim);font-size:12px;}
+  .author input{width:120px;padding:6px 8px;font-size:12px;}
+
+  .banner{background:var(--warn-bg);color:var(--warn);border:1px solid color-mix(in srgb, var(--warn) 40%, transparent);border-radius:8px;padding:9px 14px;font-size:13px;margin-bottom:14px;display:flex;gap:10px;align-items:center;}
+
+  /* ---------- board ---------- */
+  .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(280px,1fr);gap:14px;overflow-x:auto;padding-bottom:8px;align-items:start;}
+  .col{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-height:120px;width:100%;}
+  .col-head{display:flex;align-items:center;gap:8px;padding:12px 12px 10px;border-bottom:1px solid var(--line);}
+  .col-dot{width:10px;height:10px;border-radius:50%;flex:none;}
+  .col-head h3{font-size:14px;flex:1;}
+  .col-count{font-size:11px;color:var(--ink-dim);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums;}
+  .col-add{border:none;background:transparent;color:var(--ink-dim);font-size:18px;cursor:pointer;line-height:1;padding:0 2px;}
+  .col-add:hover{color:var(--accent);}
+  .col-body{display:flex;flex-direction:column;gap:10px;padding:10px;flex:1;}
+  .col-empty{color:var(--ink-dim);font-size:12px;text-align:center;padding:16px 6px;}
+  .concluidas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,340px));gap:14px;}
+  .concluidas-empty{color:var(--ink-dim);font-size:13px;text-align:center;padding:40px 6px;grid-column:1/-1;}
+
+  /* ---------- card ---------- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 12px;cursor:pointer;display:flex;flex-direction:column;gap:8px;}
+  .card:hover{border-color:var(--accent);}
+  .card-top{display:flex;align-items:center;justify-content:space-between;gap:7px;}
+  .check{width:19px;height:19px;border-radius:50%;flex:none;border:2px solid var(--line);background:var(--surface);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:transparent;}
+  .check:hover{filter:brightness(0.95);}
+  .check.good{border-color:var(--good);}
+  .check.warn{border-color:var(--warn);}
+  .check.bad{border-color:var(--bad);}
+  .check.checked{background:var(--good);border-color:var(--good);color:var(--accent-ink);}
+  .pill{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+  .pill.info{background:var(--info-bg);color:var(--info);}
+  .pill.warn{background:var(--warn-bg);color:var(--warn);}
+  .pill.good{background:var(--good-bg);color:var(--good);}
+  .pill.bad{background:var(--bad-bg);color:var(--bad);}
+  .card-title{font-weight:600;font-size:13.5px;line-height:1.3;}
+  .card-sub{color:var(--ink-dim);font-size:12px;margin-top:-4px;}
+  .progress-row{display:flex;align-items:center;gap:8px;}
+  .progress{flex:1;height:6px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;}
+  .progress > i{display:block;height:100%;background:var(--accent);border-radius:999px 0 0 999px;}
+  .progress-label{font-size:11px;color:var(--ink-dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .qty-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-dim);margin-top:-4px;}
+  .qty-row .qty-input{width:70px;padding:3px 6px;font-size:11.5px;font-variant-numeric:tabular-nums;}
+  .qty-row .qty-total{white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .card-dates{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-dim);font-variant-numeric:tabular-nums;}
+  .card-dates b{color:var(--ink);font-weight:600;}
+  .link-chip{display:flex;align-items:center;gap:6px;font-size:11.5px;background:var(--surface-2);border:1px dashed var(--line);border-radius:7px;padding:5px 8px;color:var(--ink-dim);}
+  .link-chip b{color:var(--ink);font-weight:600;}
+  .link-chip .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+  .downstream-tag{font-size:10.5px;color:var(--ink-dim);}
+  .obj-list{display:flex;flex-direction:column;gap:2px;}
+  .obj-row{display:flex;align-items:center;gap:8px;padding:3px 4px;border-radius:6px;cursor:pointer;color:var(--ink-dim);font-size:12px;font-variant-numeric:tabular-nums;}
+  .obj-row:hover{background:var(--surface-2);}
+  .obj-row.done{color:var(--good);}
+  .obj-row.done span{text-decoration:line-through;text-decoration-color:var(--line);}
+  .obj-check{width:15px;height:15px;border-radius:50%;flex:none;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent-ink);}
+  .obj-row.done .obj-check{background:var(--good);border-color:var(--good);}
+  .obj-progress{font-size:10.5px;color:var(--ink-dim);padding:2px 4px;}
+  .pack-note{font-size:11.5px;background:var(--surface-2);border-left:3px solid var(--accent);color:var(--ink);border-radius:5px;padding:6px 8px;white-space:pre-wrap;}
+
+  /* ---------- grid/table ---------- */
+  .grid-wrap{overflow:auto;max-height:calc(100vh - 180px);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);}
+  table.grid{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1180px;}
+  table.grid th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-dim);padding:9px 10px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;}
+  table.grid th:hover{color:var(--ink);}
+  table.grid td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  table.grid tbody tr:hover{background:var(--surface-2);cursor:pointer;}
+  table.grid td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font-mono);}
+  .row-empty td{text-align:center;color:var(--ink-dim);padding:26px;}
+
+  /* ---------- panel (edit) ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(20,16,10,.38);z-index:40;}
+  .panel{position:fixed;top:0;right:0;height:100%;width:min(480px,100vw);background:var(--surface);z-index:41;box-shadow:-8px 0 24px rgba(0,0,0,.18);transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;}
+  .panel.open{transform:translateX(0);}
+  .panel-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);}
+  .panel-head h2{font-size:16px;flex:1;}
+  .panel-close{border:none;background:transparent;font-size:20px;color:var(--ink-dim);cursor:pointer;line-height:1;}
+  .panel-body{overflow-y:auto;padding:16px 18px 90px;flex:1;}
+  .panel-foot{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 18px;display:flex;gap:10px;justify-content:space-between;align-items:center;}
+  fieldset{border:none;padding:0;margin:0 0 18px;}
+  legend{font-family:var(--font-display);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);margin-bottom:9px;padding:0;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+  .field label{font-size:11.5px;color:var(--ink-dim);font-weight:500;}
+  .field input,.field select,.field textarea{width:100%;}
+  .field textarea{resize:vertical;min-height:52px;font-family:inherit;}
+  .filter-select{display:flex;align-items:center;}
+
+  /* ---------- modal (sectors / login) ---------- */
+  .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;}
+  .modal-scrim{position:absolute;inset:0;background:rgba(20,16,10,.38);}
+  .modal-card{position:relative;background:var(--surface);border-radius:12px;box-shadow:var(--shadow);width:min(460px,92vw);max-height:84vh;overflow-y:auto;padding:20px 22px;}
+  .modal-card h2{font-size:16px;margin-bottom:14px;}
+  .sector-row{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .sector-row:last-child{border-bottom:none;}
+  .sector-row-main{display:flex;align-items:center;gap:8px;}
+  .sector-row input[type="color"]{width:32px;height:32px;padding:0;border:1px solid var(--line);border-radius:7px;background:none;flex:none;}
+  .sector-row input[type="text"]{flex:1;}
+  .sector-row-flags{display:flex;flex-wrap:wrap;gap:4px 14px;padding-left:40px;}
+  .sector-row-flags label{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-dim);}
+
+  /* ---------- login ---------- */
+  #loginOverlay .modal-card{width:min(360px,92vw);}
+  #loginOverlay .brand{justify-content:center;margin-bottom:18px;}
+  #loginOverlay .brand-mark{width:34px;height:34px;}
+  #loginOverlay .brand h1{font-size:19px;}
+  #loginError{font-size:12.5px;color:var(--bad);margin:-4px 0 10px;}
+
+  /* ---------- objetivos (metas) ---------- */
+  .obj-edit-row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;margin-bottom:8px;align-items:center;}
+  .obj-edit-row input{width:100%;}
+  .obj-edit-check{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-dim);white-space:nowrap;}
+  .obj-edit-row button{border:none;background:transparent;color:var(--bad);cursor:pointer;font-size:16px;line-height:1;padding:4px;}
+
+  .toast{position:fixed;bottom:18px;right:18px;background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:12.5px;z-index:60;box-shadow:var(--shadow);}
+  .toast.bad{background:var(--bad);color:#fff;}
+
+  [hidden]{display:none!important;}
+
+  @media (max-width:640px){
+    .field-row{grid-template-columns:1fr;}
+    .obj-edit-row{grid-template-columns:1fr 1fr;}
+    .obj-edit-check{grid-column:span 1;}
+    .obj-edit-row button{justify-self:end;}
+    .author{display:none;}
+    .panel{width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loginOverlay" class="modal">
+  <div class="modal-scrim"></div>
+  <div class="modal-card">
+    <div class="brand"><img class="brand-mark" src="corksupply-icon.svg" alt="Cork Supply"><h1>Fluxo CSP4</h1></div>
+    <form id="loginForm">
+      <div class="field"><label for="li_email">E-mail</label><input id="li_email" type="email" required autocomplete="username"></div>
+      <div class="field"><label for="li_pass">Palavra-passe</label><input id="li_pass" type="password" required autocomplete="current-password"></div>
+      <p id="loginError" hidden></p>
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center;text-align:center;">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="brand"><img class="brand-mark" src="corksupply-icon.svg" alt="Cork Supply" width="26" height="26"><h1>Fluxo CSP4</h1></div>
+      <nav class="views">
+        <button class="view-btn active" data-view="quadro">Quadro</button>
+        <button class="view-btn" data-view="grelha">Grelha</button>
+        <button class="view-btn" data-view="concluidas">Concluídas</button>
+      </nav>
+      <input id="searchInput" type="search" placeholder="Procurar código, cliente, produto, material…">
+      <select id="sectorFilter"></select>
+      <select id="estadoFilter">
+        <option value="all">Todos os estados</option>
+        <option value="planeado">Planeado</option>
+        <option value="em_curso">Em curso</option>
+        <option value="concluido">Concluído</option>
+        <option value="bloqueado">Bloqueado</option>
+        <option value="atrasado">Atrasado</option>
+      </select>
+      <div class="spacer"></div>
+      <div class="author"><label>Eu: <input id="authorInput" placeholder="o seu nome"></label></div>
+      <button class="btn small" id="signOutBtn" title="Terminar sessão">Sair</button>
+      <button class="btn" id="manageSectorsBtn">Setores</button>
+      <button class="btn primary" id="newOrderBtn">+ Nova encomenda</button>
+    </div>
+  </div>
+
+  <div id="dbBanner" class="banner" hidden></div>
+
+  <main id="boardContainer" class="board"></main>
+  <main id="concluidasContainer" class="concluidas-grid" hidden></main>
+  <main id="gridContainer" class="grid-wrap" hidden>
+    <table class="grid">
+      <thead>
+        <tr>
+          <th data-key="numero">Ordem</th>
+          <th data-key="cliente">Cliente</th>
+          <th data-key="produto">Produto</th>
+          <th data-key="material">Material</th>
+          <th data-key="sectorId">Setor</th>
+          <th data-key="quantidadeAtual">Qtd. real</th>
+          <th data-key="quantidadeReq">Qtd. teórica</th>
+          <th data-key="dataFimReq">Data req. fim</th>
+          <th data-key="dataFimPrevista">Data prevista fim</th>
+          <th data-key="estado">Estado</th>
+          <th>Observação</th>
+        </tr>
+      </thead>
+      <tbody id="gridBody"></tbody>
+    </table>
+  </main>
+</div>
+
+<div id="scrim" class="scrim" hidden></div>
+<aside id="editPanel" class="panel">
+  <div class="panel-head">
+    <h2 id="panelTitle">Nova encomenda</h2>
+    <button class="panel-close" id="panelClose">&times;</button>
+  </div>
+  <div class="panel-body">
+    <form id="orderForm">
+      <fieldset>
+        <legend>Identificação</legend>
+        <div class="field-row">
+          <div class="field"><label for="f_numero">Ordem / Código</label><input id="f_numero" type="text" placeholder="ex: 45016544 ou TCM0+0M-…"></div>
+          <div class="field"><label for="f_cliente">Cliente</label><input id="f_cliente" type="text"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="f_produto">Produto</label><input id="f_produto" type="text"></div>
+          <div class="field"><label for="f_material">Material</label><input id="f_material" type="text"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Fluxo entre setores</legend>
+        <div class="field-row">
+          <div class="field"><label for="f_sector">Setor atual</label><select id="f_sector"></select></div>
+          <div class="field"><label for="f_estado">Estado</label>
+            <select id="f_estado">
+              <option value="planeado">Planeado</option>
+              <option value="em_curso">Em curso</option>
+              <option value="concluido">Concluído</option>
+              <option value="bloqueado">Bloqueado</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="f_origem">Origem</label><input id="f_origem" type="text" placeholder="ex: Lavação, fornecedor externo…"></div>
+          <div class="field"><label for="f_destino">Destino</label><input id="f_destino" type="text" placeholder="ex: Escolha, cliente, armazém…"></div>
+        </div>
+        <div class="field">
+          <label for="f_pred">Encomenda anterior ligada (setor a montante)</label>
+          <select id="f_pred"><option value="">— nenhuma —</option></select>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Quantidades e datas</legend>
+        <div class="field-row">
+          <div class="field"><label for="f_dini">Data início requerida</label><input id="f_dini" type="date"></div>
+          <div class="field"><label for="f_dprev">Data prevista fim</label><input id="f_dprev" type="date"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="f_produzido">Quantidade produzida</label><input id="f_produzido" type="number" min="0" step="1"></div>
+          <div class="field"><label for="f_qreqTotal">Quantidade requerida (total)</label><input id="f_qreqTotal" type="text" disabled></div>
+        </div>
+        <div>
+          <label>Objetivos (quantidade por data)</label>
+          <div id="objetivosRows"></div>
+          <button class="btn small" id="addObjetivoBtn" type="button">+ Adicionar objetivo</button>
+        </div>
+      </fieldset>
+
+      <fieldset id="embalagemSection" hidden>
+        <legend>Embalagem</legend>
+        <div class="field"><label for="f_embalagem">Instruções de embalagem</label><textarea id="f_embalagem" placeholder="ex: sacos duplos, paletização específica…"></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Notas de equipa</legend>
+        <div class="field"><label for="f_notasplan">Notas do planeador</label><textarea id="f_notasplan"></textarea></div>
+        <div class="field"><label for="f_notasprod">Notas do responsável de produção</label><textarea id="f_notasprod"></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Observações</legend>
+        <div class="field"><label for="f_obsgerais">Observações gerais</label><textarea id="f_obsgerais"></textarea></div>
+        <div class="field"><label for="f_obsqual">Observações de qualidade</label><textarea id="f_obsqual"></textarea></div>
+        <div class="field"><label for="f_obsprod">Observações do produto</label><textarea id="f_obsprod"></textarea></div>
+      </fieldset>
+    </form>
+  </div>
+  <div class="panel-foot">
+    <button class="btn danger" id="deleteOrderBtn" type="button" hidden>Eliminar</button>
+    <div style="flex:1"></div>
+    <button class="btn" id="cancelOrderBtn" type="button">Cancelar</button>
+    <button class="btn primary" id="saveOrderBtn" type="button">Guardar</button>
+  </div>
+</aside>
+
+<div id="sectorModal" class="modal" hidden>
+  <div class="modal-scrim" id="sectorModalScrim"></div>
+  <div class="modal-card">
+    <h2>Setores de produção</h2>
+    <div id="sectorRows"></div>
+    <button class="btn small" id="addSectorBtn" type="button">+ Adicionar setor</button>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+      <button class="btn" id="sectorCancelBtn" type="button">Cancelar</button>
+      <button class="btn primary" id="sectorSaveBtn" type="button">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<!-- Firebase (compat build — same API shape used below, no build step needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
+<script>
+  // ====== SUBSTITUIR pelo firebaseConfig copiado de "Definições do projeto" na consola Firebase ======
+  const firebaseConfig = {
+    apiKey: "AIzaSyB95I9RIH8hJ63W1gyu3Mdt_K7Qvx4_7dE",
+    authDomain: "planeamento-csp4.firebaseapp.com",
+    projectId: "planeamento-csp4",
+    storageBucket: "planeamento-csp4.firebasestorage.app",
+    messagingSenderId: "1064313855686",
+    appId: "1:1064313855686:web:b0a92c7ecde25bcab341c7"
+  };
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  const DEFAULT_SECTORS = [
+    { id:'bartops', nome:'Bartops', cor:'#B5652D', instrucoesEmbalagem:false },
+    { id:'lavacao', nome:'Lavação', cor:'#2E7D6B', instrucoesEmbalagem:true },
+    { id:'escolha', nome:'Escolha', cor:'#A6752A', instrucoesEmbalagem:true },
+    { id:'outros', nome:'Outros', cor:'#746F6D', instrucoesEmbalagem:false },
+  ];
+
+  const ESTADOS = {
+    planeado:  { label:'Planeado',  tone:'info' },
+    em_curso:  { label:'Em curso',  tone:'warn' },
+    concluido: { label:'Concluído', tone:'good' },
+    bloqueado: { label:'Bloqueado', tone:'bad'  },
+  };
+
+  let db = null;
+  let dbMode = 'checking'; // checking | live | offline
+  let subscribed = false;
+  let sectors = DEFAULT_SECTORS.slice();
+  let ordersById = new Map();
+  let filters = { q:'', sector:'all', estado:'all' };
+  let currentView = 'quadro';
+  let sortKey = 'dataFimReq', sortDir = 'asc';
+  let editingId = null;
+  let objetivosDraft = [];
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function fmtNum(n){
+    if(n == null || n === '' || isNaN(n)) return '—';
+    const neg = n < 0;
+    const digits = Math.round(Math.abs(n)).toString();
+    let out = '';
+    for(let i = 0; i < digits.length; i++){
+      const posFromEnd = digits.length - i;
+      out += digits[i];
+      if(posFromEnd > 1 && posFromEnd % 3 === 1) out += '.';
+    }
+    return (neg?'-':'') + out;
+  }
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function fmtDate(s){
+    if(!s) return '—';
+    const p = s.split('-'); if(p.length!==3) return s;
+    return p[2]+'/'+p[1];
+  }
+  function daysUntil(s){
+    if(!s) return null;
+    const d = new Date(s+'T00:00:00'); const t = new Date(todayISO()+'T00:00:00');
+    return Math.round((d-t)/86400000);
+  }
+  function sectorById(id){ return sectors.find(s=>s.id===id); }
+  function sectorName(id){ const s = sectorById(id); return s ? s.nome : (id ? id : '—'); }
+  function sectorColor(id){ const s = sectorById(id); return s ? s.cor : '#8C7B6E'; }
+  function sectorFlags(id){ const s = sectorById(id); return { pack: !!(s && s.instrucoesEmbalagem) }; }
+  function uid(){ return 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function nowISO(){ return new Date().toISOString(); }
+  function authorName(){
+    try { return localStorage.getItem('csp4_fluxo_autor') || ''; } catch(e){ return ''; }
+  }
+
+  function toast(msg, bad){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.toggle('bad', !!bad);
+    el.hidden = false;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>{ el.hidden = true; }, 3200);
+  }
+
+  function isAtrasado(o){
+    if(!o) return false;
+    if(o.estado === 'concluido') return false;
+    if(!o.dataFimReq) return false;
+    return o.dataFimReq < todayISO();
+  }
+
+  function semaforo(o){
+    if(o.estado === 'bloqueado') return 'bad';
+    if(isAtrasado(o)) return 'bad';
+    const pred = o.linkedFromOrderId ? ordersById.get(o.linkedFromOrderId) : null;
+    if(pred){
+      if(pred.estado === 'bloqueado' || isAtrasado(pred)) return 'bad';
+      if(pred.estado !== 'concluido') return 'warn';
+    }
+    if(o.estado === 'concluido') return 'good';
+    const days = daysUntil(o.dataFimReq);
+    if(days !== null && days <= 2) return 'warn';
+    return 'good';
+  }
+
+  function autoCheckObjetivos(objetivos, produzido){
+    let running = 0;
+    return objetivos.map(function(g){
+      running += (g.quantidade||0);
+      return Object.assign({}, g, { concluido: running <= produzido });
+    });
+  }
+
+  function availableQty(o){
+    if(o.estado === 'concluido') return o.quantidadeReq || 0;
+    return o.quantidadeAtual || 0;
+  }
+
+  /* ---------------- auth ---------------- */
+
+  function showLogin(){ document.getElementById('loginOverlay').hidden = false; }
+  function hideLogin(){ document.getElementById('loginOverlay').hidden = true; }
+
+  function startAuth(){
+    let app;
+    try{
+      app = firebase.initializeApp(firebaseConfig);
+    }catch(e){
+      dbMode = 'offline';
+      seedDemoOrders();
+      showBanner('Não foi possível ligar ao Firebase (configuração em falta ou inválida). A mostrar dados de demonstração.');
+      render();
+      return;
+    }
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(function(user){
+      if(!user){
+        dbMode = 'checking';
+        showLogin();
+        return;
+      }
+      hideLogin();
+      db = firebase.firestore();
+      dbMode = 'live';
+      const authorInput = document.getElementById('authorInput');
+      if(!authorName() && user.email) authorInput.value = user.email.split('@')[0];
+      if(!subscribed){
+        subscribed = true;
+        subscribeData();
+      }
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const email = document.getElementById('li_email').value.trim();
+      const pass = document.getElementById('li_pass').value;
+      const errEl = document.getElementById('loginError');
+      errEl.hidden = true;
+      auth.signInWithEmailAndPassword(email, pass).catch(function(){
+        errEl.textContent = 'Não foi possível iniciar sessão. Verifique o e-mail e a palavra-passe.';
+        errEl.hidden = false;
+      });
+    });
+
+    document.getElementById('signOutBtn').addEventListener('click', function(){
+      auth.signOut();
+    });
+  }
+
+  /* ---------------- persistence layer (Firestore or offline fallback) ---------------- */
+
+  function seedDemoOrders(){
+    const demo = [
+      { numero:'BTBO 29X225', cliente:'CSP2', produto:'Bartop 29x225', material:'0C0C', sectorId:'bartops', estado:'em_curso', quantidadeReq:130000, quantidadeAtual:80000, dataInicioReq:'2026-09-10', dataFimReq:'2026-09-15', dataFimPrevista:'2026-09-15', objetivos:[{quantidade:80000,data:'2026-09-12',concluido:true},{quantidade:50000,data:'2026-09-15',concluido:false}], notasPlaneador:'Prioridade cliente CSP2.', notasProducao:'', obsGerais:'', obsQualidade:'', obsProduto:'', origem:'', destino:'Lavação' },
+      { numero:'TM0+0M-QV2-49X242-VINC', cliente:'CSP2', produto:'VINC 49x242', material:'', sectorId:'lavacao', estado:'em_curso', quantidadeReq:500000, quantidadeAtual:150000, dataFimReq:'2026-09-22', dataFimPrevista:'2026-09-22', objetivos:[{quantidade:150000,data:'2026-09-16',concluido:true},{quantidade:200000,data:'2026-09-19',concluido:false},{quantidade:150000,data:'2026-09-22',concluido:false}], instrucoesEmbalagem:'Sacos duplos, paletização CSP2 standard.', notasPlaneador:'', notasProducao:'', obsGerais:'', obsQualidade:'', obsProduto:'', origem:'Bartops', destino:'Escolha' },
+      { numero:'TC0+2M-QV2-L04-43X310-1212', cliente:'—', produto:'43x310 - 1212', material:'', sectorId:'escolha', estado:'em_curso', quantidadeReq:35000, quantidadeAtual:22000, dataFimReq:'2026-09-17', dataFimPrevista:'2026-09-17', objetivos:[{quantidade:22000,data:'2026-09-16',concluido:true},{quantidade:13000,data:'2026-09-17',concluido:false}], instrucoesEmbalagem:'Expedir 35K (mínimo) em caixas de 500un.', notasPlaneador:'Expedir 35K (mínimo).', notasProducao:'', obsGerais:'', obsQualidade:'', obsProduto:'', origem:'Lavação', destino:'Expedição' },
+      { numero:'NQM 301000001078', cliente:'—', produto:'Rolhas amassadas', material:'', sectorId:'outros', estado:'bloqueado', quantidadeReq:1100, quantidadeAtual:0, dataFimReq:'2026-09-14', dataFimPrevista:'2026-09-18', objetivos:[{quantidade:1100,data:'2026-09-14',concluido:false}], notasPlaneador:'', notasProducao:'A aguardar decisão de qualidade.', obsGerais:'', obsQualidade:'Rolhas amassadas em receção.', obsProduto:'', origem:'Receção', destino:'—' },
+    ];
+    ordersById = new Map();
+    demo.forEach(d=>{
+      const id = uid();
+      ordersById.set(id, Object.assign({_id:id, linkedFromOrderId:null, criadoPor:'demo', atualizadoPor:'demo', criadoEm:nowISO(), atualizadoEm:nowISO()}, d));
+    });
+    const arr = [...ordersById.values()];
+    const lav = arr.find(o=>o.sectorId==='lavacao');
+    const esc2 = arr.find(o=>o.sectorId==='escolha');
+    if(lav && esc2) esc2.linkedFromOrderId = lav._id;
+  }
+
+  function subscribeData(){
+    db.doc('config/sectors').onSnapshot(function(snap){
+      const data = snap.exists ? snap.data() : null;
+      if(data && Array.isArray(data.list) && data.list.length){
+        let migrated = false;
+        sectors = data.list.map(function(s){
+          if('instrucoesEmbalagem' in s) return s;
+          migrated = true;
+          const def = DEFAULT_SECTORS.find(function(d){ return d.id === s.id; });
+          return Object.assign({
+            instrucoesEmbalagem: def ? def.instrucoesEmbalagem : false,
+          }, s);
+        });
+        if(migrated){
+          db.doc('config/sectors').set({ list: sectors, atualizadoEm: nowISO() }).catch(function(){});
+        }
+      } else if(!snap.exists){
+        sectors = DEFAULT_SECTORS.slice();
+        db.doc('config/sectors').set({ list: DEFAULT_SECTORS, atualizadoEm: nowISO() }).catch(function(){});
+      }
+      render();
+    }, function(err){ console.error('sectors', err); });
+
+    db.collection('orders').onSnapshot(function(snap){
+      const m = new Map();
+      snap.docs.forEach(function(d){ m.set(d.id, Object.assign({_id:d.id}, d.data())); });
+      ordersById = m;
+      m.forEach(function(o){
+        if(!Array.isArray(o.objetivos) || !o.objetivos.length){
+          if(o.quantidadeReq == null) return;
+          const seeded = [{ quantidade: o.quantidadeReq, data: o.dataFimReq || null, concluido: o.estado === 'concluido' }];
+          db.collection('orders').doc(o._id).update({ objetivos: seeded }).catch(function(){});
+          return;
+        }
+        let changed = false;
+        const list = o.objetivos.map(function(g){
+          if('concluido' in g) return g;
+          changed = true;
+          return Object.assign({}, g, { concluido: g.quantidade!=null && (g.quantidadeAtual||0) >= g.quantidade });
+        });
+        if(changed){
+          const quantidadeAtual = list.reduce(function(s,g){ return s + (g.concluido ? (g.quantidade||0) : 0); }, 0);
+          db.collection('orders').doc(o._id).update({ objetivos: list, quantidadeAtual: quantidadeAtual }).catch(function(){});
+        }
+      });
+      render();
+    }, function(err){ console.error('orders', err); toast('Erro a sincronizar encomendas.', true); });
+  }
+
+  function showBanner(msg){
+    const b = document.getElementById('dbBanner');
+    b.textContent = msg;
+    b.hidden = false;
+  }
+
+  async function persistSectors(list){
+    sectors = list;
+    if(dbMode === 'live' && db){
+      try{
+        await db.doc('config/sectors').set({ list: list, atualizadoEm: nowISO() });
+      }catch(e){ toast('Erro ao guardar setores.', true); }
+    }
+    render();
+  }
+
+  async function persistOrder(id, patch){
+    const author = authorName() || 'anónimo';
+    if(dbMode === 'live' && db){
+      try{
+        if(id){
+          await db.collection('orders').doc(id).update(Object.assign({}, patch, { atualizadoPor: author, atualizadoEm: nowISO() }));
+        } else {
+          await db.collection('orders').add(Object.assign({}, patch, { linkedFromOrderId: patch.linkedFromOrderId || null, criadoPor: author, atualizadoPor: author, criadoEm: nowISO(), atualizadoEm: nowISO() }));
+        }
+        toast('Encomenda guardada.');
+      }catch(e){ toast('Erro ao guardar encomenda.', true); }
+    } else {
+      if(id){
+        const existing = ordersById.get(id) || {};
+        ordersById.set(id, Object.assign({}, existing, patch, {_id:id, atualizadoPor:author, atualizadoEm:nowISO()}));
+      } else {
+        const nid = uid();
+        ordersById.set(nid, Object.assign({_id:nid, linkedFromOrderId:null}, patch, {criadoPor:author, atualizadoPor:author, criadoEm:nowISO(), atualizadoEm:nowISO()}));
+      }
+      toast('Guardado localmente (pré-visualização).');
+      render();
+    }
+  }
+
+  function toggleConcluido(id){
+    const o = ordersById.get(id);
+    if(!o) return;
+    const marking = o.estado !== 'concluido';
+    if(marking && !confirm('Marcar esta encomenda como concluída?\n\nVai passar para a aba "Concluídas".')) return;
+    const patch = { estado: marking ? 'concluido' : 'em_curso' };
+    if(marking){
+      patch.quantidadeAtual = o.quantidadeReq || 0;
+      if(Array.isArray(o.objetivos) && o.objetivos.length){
+        patch.objetivos = o.objetivos.map(function(g){ return Object.assign({}, g, { concluido: true }); });
+      }
+    }
+    persistOrder(id, patch);
+  }
+
+  function toggleObjetivo(orderId, idx){
+    const o = ordersById.get(orderId);
+    if(!o || !Array.isArray(o.objetivos) || !o.objetivos[idx]) return;
+    const list = o.objetivos.map(function(g){ return Object.assign({}, g); });
+    list[idx].concluido = !list[idx].concluido;
+    const quantidadeAtual = list.reduce(function(sum,g){ return sum + (g.concluido ? (g.quantidade||0) : 0); }, 0);
+    const allDone = list.every(function(g){ return g.concluido; });
+    const patch = { objetivos: list, quantidadeAtual: quantidadeAtual };
+    if(allDone) patch.estado = 'concluido';
+    else if(o.estado === 'concluido') patch.estado = 'em_curso';
+    persistOrder(orderId, patch);
+  }
+
+  function updateQuantidade(orderId, valor){
+    const o = ordersById.get(orderId);
+    if(!o) return;
+    const patch = { quantidadeAtual: valor };
+    if(Array.isArray(o.objetivos) && o.objetivos.length){
+      const list = autoCheckObjetivos(o.objetivos, valor);
+      patch.objetivos = list;
+      const allDone = list.every(function(g){ return g.concluido; });
+      if(allDone) patch.estado = 'concluido';
+      else if(o.estado === 'concluido') patch.estado = 'em_curso';
+    }
+    persistOrder(orderId, patch);
+  }
+
+  async function removeOrder(id){
+    if(dbMode === 'live' && db){
+      try{ await db.collection('orders').doc(id).delete(); toast('Encomenda eliminada.'); }
+      catch(e){ toast('Erro ao eliminar.', true); }
+    } else {
+      ordersById.delete(id);
+      toast('Eliminado localmente (pré-visualização).');
+      render();
+    }
+  }
+
+  /* ---------------- filtering / sorting ---------------- */
+
+  function filteredOrders(){
+    const q = filters.q.trim().toLowerCase();
+    let arr = [...ordersById.values()].filter(function(o){
+      if(filters.sector !== 'all' && o.sectorId !== filters.sector) return false;
+      if(filters.estado === 'atrasado' && !isAtrasado(o)) return false;
+      else if(filters.estado !== 'all' && filters.estado !== 'atrasado' && o.estado !== filters.estado) return false;
+      if(q){
+        const hay = [o.numero,o.cliente,o.produto,o.material,o.obsGerais].join(' ').toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    return arr;
+  }
+
+  function sortArr(arr){
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return arr.slice().sort(function(a,b){
+      let av = a[sortKey], bv = b[sortKey];
+      if(sortKey === 'sectorId'){ av = sectorName(av); bv = sectorName(bv); }
+      if(av == null) av = '';
+      if(bv == null) bv = '';
+      if(typeof av === 'number' && typeof bv === 'number') return (av-bv)*dir;
+      return String(av).localeCompare(String(bv), 'pt') * dir;
+    });
+  }
+
+  /* ---------------- render ---------------- */
+
+  function render(){
+    renderFilterOptions();
+    document.getElementById('boardContainer').hidden = currentView !== 'quadro';
+    document.getElementById('concluidasContainer').hidden = currentView !== 'concluidas';
+    document.getElementById('gridContainer').hidden = currentView !== 'grelha';
+    if(currentView === 'quadro') renderBoard();
+    else if(currentView === 'concluidas') renderConcluidas();
+    else renderGrid();
+  }
+
+  function renderFilterOptions(){
+    const sel = document.getElementById('sectorFilter');
+    const cur = sel.value || 'all';
+    sel.innerHTML = '<option value="all">Todos os setores</option>' + sectors.map(function(s){
+      return '<option value="'+esc(s.id)+'">'+esc(s.nome)+'</option>';
+    }).join('');
+    sel.value = [...sel.options].some(o=>o.value===cur) ? cur : 'all';
+    filters.sector = sel.value;
+  }
+
+  function cardHtml(o){
+    const sem = semaforo(o);
+    const est = ESTADOS[o.estado] || ESTADOS.planeado;
+    const pct = (o.quantidadeReq && o.quantidadeReq > 0) ? Math.max(0, Math.min(100, Math.round(((o.quantidadeAtual||0)/o.quantidadeReq)*100))) : null;
+    const pred = o.linkedFromOrderId ? ordersById.get(o.linkedFromOrderId) : null;
+    const downstreamSectors = [...new Set([...ordersById.values()].filter(function(x){return x.linkedFromOrderId===o._id;}).map(function(x){return sectorName(x.sectorId);}))];
+    const checked = o.estado === 'concluido';
+    let html = '<div class="card" data-id="'+esc(o._id)+'">';
+    html += '<div class="card-top"><button class="check '+(checked?'checked':sem)+'" data-toggle-done="'+esc(o._id)+'" title="'+(checked?'Marcar como não concluído':'Marcar como concluído')+'">'+(checked?'✓':'')+'</button>';
+    html += '<span class="pill '+est.tone+'">'+esc(est.label)+(isAtrasado(o)?' · atrasado':'')+'</span></div>';
+    html += '<div class="card-title">'+esc(o.cliente||'(sem cliente)')+(o.material?(' · '+esc(o.material)):'')+'</div>';
+    html += '<div class="card-sub">'+esc(o.produto||'(sem produto)')+(o.numero?(' <span class="mono">· '+esc(o.numero)+'</span>'):'')+'</div>';
+    if(pct !== null){
+      html += '<div class="progress-row"><div class="progress"><i style="width:'+pct+'%;"></i></div><span class="progress-label">'+pct+'%</span></div>';
+      html += '<div class="qty-row" data-order="'+esc(o._id)+'"><span>Produzido</span>'
+        + '<input type="number" class="qty-input" min="0" step="1" value="'+(o.quantidadeAtual!=null?o.quantidadeAtual:0)+'" data-qty-order="'+esc(o._id)+'">'
+        + '<span class="qty-total">/ '+fmtNum(o.quantidadeReq)+'</span></div>';
+    }
+    html += '<div class="card-dates"><span>Fim req.: <b>'+fmtDate(o.dataFimReq)+'</b></span><span>Prev.: <b>'+fmtDate(o.dataFimPrevista)+'</b></span></div>';
+    if(o.objetivos && o.objetivos.length){
+      const doneCount = o.objetivos.filter(function(g){ return g.concluido; }).length;
+      html += '<div class="obj-list">' + o.objetivos.map(function(g,gi){
+        return '<div class="obj-row'+(g.concluido?' done':'')+'" data-order="'+esc(o._id)+'" data-idx="'+gi+'">'
+          + '<span class="obj-check">'+(g.concluido?'✓':'')+'</span>'
+          + '<span>'+fmtNum(g.quantidade)+' · '+fmtDate(g.data)+'</span>'
+          + '</div>';
+      }).join('') + '<div class="obj-progress">'+doneCount+'/'+o.objetivos.length+' concluídos</div></div>';
+    }
+    if(o.instrucoesEmbalagem){
+      html += '<div class="pack-note">📦 '+esc(o.instrucoesEmbalagem)+'</div>';
+    }
+    if(pred){
+      const psem = semaforo(pred);
+      const avail = availableQty(pred);
+      html += '<div class="link-chip"><span class="dot '+psem+'" style="background:var(--'+(psem==='good'?'good':psem==='warn'?'warn':'bad')+')"></span>← Setor anterior <b>'+esc(sectorName(pred.sectorId))+'</b>: '+esc((ESTADOS[pred.estado]||ESTADOS.planeado).label)+(avail>0?(' · '+fmtNum(avail)+' disponíveis'):'')+'</div>';
+    }
+    if(downstreamSectors.length){
+      html += '<div class="downstream-tag">→ Alimenta: '+downstreamSectors.map(esc).join(', ')+'</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderBoard(){
+    const container = document.getElementById('boardContainer');
+    const list = filteredOrders().filter(function(o){ return o.estado !== 'concluido'; });
+    const visibleSectors = filters.sector === 'all' ? sectors : sectors.filter(function(s){ return s.id === filters.sector; });
+    container.innerHTML = visibleSectors.map(function(sec){
+      const items = sortArr(list.filter(function(o){ return o.sectorId === sec.id; }));
+      const body = items.length
+        ? items.map(cardHtml).join('')
+        : '<div class="col-empty">Sem encomendas</div>';
+      return '<div class="col">'
+        + '<div class="col-head"><span class="col-dot" style="background:'+esc(sec.cor)+'"></span><h3>'+esc(sec.nome)+'</h3>'
+        + '<span class="col-count">'+items.length+'</span>'
+        + '<button class="col-add" data-add-sector="'+esc(sec.id)+'" title="Nova encomenda em '+esc(sec.nome)+'">+</button></div>'
+        + '<div class="col-body">'+body+'</div>'
+        + '</div>';
+    }).join('');
+
+    container.querySelectorAll('[data-add-sector]').forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); openEditor(null, el.getAttribute('data-add-sector')); });
+    });
+    wireCardEvents(container);
+  }
+
+  function renderConcluidas(){
+    const container = document.getElementById('concluidasContainer');
+    const q = filters.q.trim().toLowerCase();
+    let list = [...ordersById.values()].filter(function(o){
+      if(o.estado !== 'concluido') return false;
+      if(filters.sector !== 'all' && o.sectorId !== filters.sector) return false;
+      if(q){
+        const hay = [o.numero,o.cliente,o.produto,o.material,o.obsGerais].join(' ').toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    list = sortArr(list);
+    container.innerHTML = list.length
+      ? list.map(cardHtml).join('')
+      : '<div class="concluidas-empty">Ainda não há encomendas concluídas.</div>';
+    wireCardEvents(container);
+  }
+
+  function wireCardEvents(container){
+    container.querySelectorAll('.card').forEach(function(el){
+      el.addEventListener('click', function(){ openEditor(el.getAttribute('data-id')); });
+    });
+    container.querySelectorAll('[data-toggle-done]').forEach(function(btn){
+      btn.addEventListener('click', function(e){ e.stopPropagation(); toggleConcluido(btn.getAttribute('data-toggle-done')); });
+    });
+    container.querySelectorAll('.obj-row[data-order]').forEach(function(row){
+      row.addEventListener('click', function(e){
+        e.stopPropagation();
+        toggleObjetivo(row.getAttribute('data-order'), Number(row.getAttribute('data-idx')));
+      });
+    });
+    container.querySelectorAll('[data-qty-order]').forEach(function(inp){
+      inp.addEventListener('click', function(e){ e.stopPropagation(); });
+      inp.addEventListener('change', function(e){
+        e.stopPropagation();
+        const val = e.target.value === '' ? 0 : Number(e.target.value);
+        updateQuantidade(inp.getAttribute('data-qty-order'), val);
+      });
+    });
+  }
+
+  function renderGrid(){
+    const body = document.getElementById('gridBody');
+    const list = sortArr(filteredOrders());
+    if(!list.length){
+      body.innerHTML = '<tr class="row-empty"><td colspan="11">Sem encomendas para os filtros atuais.</td></tr>';
+      return;
+    }
+    body.innerHTML = list.map(function(o){
+      const est = ESTADOS[o.estado] || ESTADOS.planeado;
+      return '<tr data-id="'+esc(o._id)+'">'
+        + '<td class="mono">'+esc(o.numero||'—')+'</td>'
+        + '<td>'+esc(o.cliente||'—')+'</td>'
+        + '<td>'+esc(o.produto||'—')+'</td>'
+        + '<td>'+esc(o.material||'—')+'</td>'
+        + '<td><span style="color:'+esc(sectorColor(o.sectorId))+';font-weight:600;">'+esc(sectorName(o.sectorId))+'</span></td>'
+        + '<td class="num">'+fmtNum(o.quantidadeAtual)+'</td>'
+        + '<td class="num">'+fmtNum(o.quantidadeReq)+'</td>'
+        + '<td>'+fmtDate(o.dataFimReq)+(isAtrasado(o)?' <span class="pill bad">atrasado</span>':'')+'</td>'
+        + '<td>'+fmtDate(o.dataFimPrevista)+'</td>'
+        + '<td><span class="pill '+est.tone+'">'+esc(est.label)+'</span></td>'
+        + '<td>'+esc(o.obsGerais||'')+'</td>'
+        + '</tr>';
+    }).join('');
+    body.querySelectorAll('tr[data-id]').forEach(function(tr){
+      tr.addEventListener('click', function(){ openEditor(tr.getAttribute('data-id')); });
+    });
+  }
+
+  /* ---------------- editor panel ---------------- */
+
+  function fillSectorSelect(selectEl, includeBlank){
+    selectEl.innerHTML = (includeBlank?'<option value="">—</option>':'') + sectors.map(function(s){
+      return '<option value="'+esc(s.id)+'">'+esc(s.nome)+'</option>';
+    }).join('');
+  }
+
+  function fillPredSelect(selectEl, excludeId){
+    const groups = sectors.map(function(sec){
+      const opts = [...ordersById.values()]
+        .filter(function(o){ return o.sectorId === sec.id && o._id !== excludeId; })
+        .sort(function(a,b){ return (a.numero||'').localeCompare(b.numero||''); })
+        .map(function(o){
+          return '<option value="'+esc(o._id)+'">'+esc(o.numero||o.produto||o._id)+' — '+esc(o.produto||o.cliente||'')+'</option>';
+        }).join('');
+      return opts ? '<optgroup label="'+esc(sec.nome)+'">'+opts+'</optgroup>' : '';
+    }).join('');
+    selectEl.innerHTML = '<option value="">— nenhuma —</option>' + groups;
+  }
+
+  function updateQtyTotalDisplay(){
+    const total = objetivosDraft.reduce(function(sum,g){ return sum + (g.quantidade||0); }, 0);
+    document.getElementById('f_qreqTotal').value = fmtNum(total);
+  }
+
+  function renderObjetivosRows(){
+    const wrap = document.getElementById('objetivosRows');
+    wrap.innerHTML = objetivosDraft.map(function(g,i){
+      return '<div class="obj-edit-row" data-i="'+i+'">'
+        + '<input type="number" min="0" step="1" placeholder="Quantidade" data-role="q" value="'+(g.quantidade!=null?g.quantidade:'')+'">'
+        + '<input type="date" data-role="d" value="'+(g.data||'')+'">'
+        + '<label class="obj-edit-check"><input type="checkbox" data-role="c"'+(g.concluido?' checked':'')+'> Concluído</label>'
+        + '<button type="button" data-role="del" title="Remover objetivo">&times;</button>'
+        + '</div>';
+    }).join('');
+    wrap.querySelectorAll('.obj-edit-row').forEach(function(row){
+      const i = Number(row.getAttribute('data-i'));
+      row.querySelector('[data-role="q"]').addEventListener('input', function(e){ objetivosDraft[i].quantidade = e.target.value===''?null:Number(e.target.value); updateQtyTotalDisplay(); });
+      row.querySelector('[data-role="d"]').addEventListener('input', function(e){ objetivosDraft[i].data = e.target.value || null; });
+      row.querySelector('[data-role="c"]').addEventListener('change', function(e){
+        objetivosDraft[i].concluido = e.target.checked;
+        const produced = objetivosDraft.reduce(function(sum,g){ return sum + (g.concluido ? (g.quantidade||0) : 0); }, 0);
+        document.getElementById('f_produzido').value = produced;
+      });
+      row.querySelector('[data-role="del"]').addEventListener('click', function(){ objetivosDraft.splice(i,1); renderObjetivosRows(); updateQtyTotalDisplay(); });
+    });
+    updateQtyTotalDisplay();
+  }
+
+  function updateSectorSpecificUI(){
+    const flags = sectorFlags(document.getElementById('f_sector').value);
+    document.getElementById('embalagemSection').hidden = !flags.pack;
+  }
+
+  function openEditor(id, presetSectorId){
+    editingId = id;
+    const o = id ? ordersById.get(id) : null;
+    document.getElementById('panelTitle').textContent = o ? 'Editar encomenda' : 'Nova encomenda';
+    document.getElementById('deleteOrderBtn').hidden = !o;
+
+    fillSectorSelect(document.getElementById('f_sector'), false);
+    fillPredSelect(document.getElementById('f_pred'), id);
+
+    document.getElementById('f_numero').value = o ? (o.numero||'') : '';
+    document.getElementById('f_cliente').value = o ? (o.cliente||'') : '';
+    document.getElementById('f_produto').value = o ? (o.produto||'') : '';
+    document.getElementById('f_material').value = o ? (o.material||'') : '';
+    document.getElementById('f_sector').value = o ? (o.sectorId||sectors[0].id) : (presetSectorId || sectors[0].id);
+    document.getElementById('f_estado').value = o ? (o.estado||'planeado') : 'planeado';
+    document.getElementById('f_origem').value = o ? (o.origem||'') : '';
+    document.getElementById('f_destino').value = o ? (o.destino||'') : '';
+    document.getElementById('f_pred').value = o ? (o.linkedFromOrderId||'') : '';
+    document.getElementById('f_dini').value = o ? (o.dataInicioReq||'') : '';
+    document.getElementById('f_dprev').value = o ? (o.dataFimPrevista||'') : '';
+    document.getElementById('f_notasplan').value = o ? (o.notasPlaneador||'') : '';
+    document.getElementById('f_notasprod').value = o ? (o.notasProducao||'') : '';
+    document.getElementById('f_obsgerais').value = o ? (o.obsGerais||'') : '';
+    document.getElementById('f_obsqual').value = o ? (o.obsQualidade||'') : '';
+    document.getElementById('f_obsprod').value = o ? (o.obsProduto||'') : '';
+    document.getElementById('f_embalagem').value = o ? (o.instrucoesEmbalagem||'') : '';
+    document.getElementById('f_produzido').value = o && o.quantidadeAtual!=null ? o.quantidadeAtual : 0;
+
+    objetivosDraft = (o && Array.isArray(o.objetivos) && o.objetivos.length)
+      ? o.objetivos.map(function(g){ return Object.assign({}, g); })
+      : [{ quantidade: o ? o.quantidadeReq : null, data: o ? o.dataFimReq : null, concluido: o ? o.estado === 'concluido' : false }];
+    renderObjetivosRows();
+    updateSectorSpecificUI();
+
+    document.getElementById('editPanel').classList.add('open');
+    document.getElementById('scrim').hidden = false;
+  }
+
+  function closeEditor(){
+    document.getElementById('editPanel').classList.remove('open');
+    document.getElementById('scrim').hidden = true;
+    editingId = null;
+  }
+
+  function collectForm(){
+    const sectorId = document.getElementById('f_sector').value;
+    const flags = sectorFlags(sectorId);
+    const valid = objetivosDraft.filter(function(g){ return g.quantidade!=null || g.data; });
+    const quantidadeReq = valid.reduce(function(sum,g){ return sum + (g.quantidade||0); }, 0);
+    const produzidoInput = document.getElementById('f_produzido').value;
+    const quantidadeAtual = produzidoInput === '' ? 0 : Number(produzidoInput);
+    const dates = valid.map(function(g){ return g.data; }).filter(Boolean).sort();
+    const dataFimReq = dates.length ? dates[dates.length-1] : null;
+    const objetivos = valid;
+    return {
+      numero: document.getElementById('f_numero').value.trim(),
+      cliente: document.getElementById('f_cliente').value.trim(),
+      produto: document.getElementById('f_produto').value.trim(),
+      material: document.getElementById('f_material').value.trim(),
+      sectorId: sectorId,
+      estado: document.getElementById('f_estado').value,
+      origem: document.getElementById('f_origem').value.trim(),
+      destino: document.getElementById('f_destino').value.trim(),
+      linkedFromOrderId: document.getElementById('f_pred').value || null,
+      quantidadeReq: quantidadeReq,
+      quantidadeAtual: quantidadeAtual,
+      objetivos: objetivos,
+      instrucoesEmbalagem: flags.pack ? document.getElementById('f_embalagem').value : '',
+      dataInicioReq: document.getElementById('f_dini').value || null,
+      dataFimReq: dataFimReq,
+      dataFimPrevista: document.getElementById('f_dprev').value || null,
+      notasPlaneador: document.getElementById('f_notasplan').value,
+      notasProducao: document.getElementById('f_notasprod').value,
+      obsGerais: document.getElementById('f_obsgerais').value,
+      obsQualidade: document.getElementById('f_obsqual').value,
+      obsProduto: document.getElementById('f_obsprod').value,
+    };
+  }
+
+  /* ---------------- sector manager ---------------- */
+
+  let sectorsDraft = [];
+
+  function openSectorModal(){
+    sectorsDraft = sectors.map(function(s){ return Object.assign({}, s); });
+    renderSectorRows();
+    document.getElementById('sectorModal').hidden = false;
+  }
+  function closeSectorModal(){ document.getElementById('sectorModal').hidden = true; }
+
+  function renderSectorRows(){
+    const wrap = document.getElementById('sectorRows');
+    wrap.innerHTML = sectorsDraft.map(function(s,i){
+      return '<div class="sector-row" data-i="'+i+'">'
+        + '<div class="sector-row-main">'
+        + '<input type="color" value="'+esc(s.cor)+'" data-role="cor">'
+        + '<input type="text" value="'+esc(s.nome)+'" data-role="nome">'
+        + '<button class="btn small danger" type="button" data-role="del">Remover</button>'
+        + '</div>'
+        + '<div class="sector-row-flags">'
+        + '<label><input type="checkbox" data-role="pack"'+(s.instrucoesEmbalagem?' checked':'')+'> Instruções de embalagem</label>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+    wrap.querySelectorAll('.sector-row').forEach(function(row){
+      const i = Number(row.getAttribute('data-i'));
+      row.querySelector('[data-role="cor"]').addEventListener('input', function(e){ sectorsDraft[i].cor = e.target.value; });
+      row.querySelector('[data-role="nome"]').addEventListener('input', function(e){ sectorsDraft[i].nome = e.target.value; });
+      row.querySelector('[data-role="pack"]').addEventListener('change', function(e){ sectorsDraft[i].instrucoesEmbalagem = e.target.checked; });
+      row.querySelector('[data-role="del"]').addEventListener('click', function(){
+        const inUse = [...ordersById.values()].some(function(o){ return o.sectorId === sectorsDraft[i].id; });
+        if(inUse && !confirm('Este setor tem encomendas associadas. Remover mesmo assim?')) return;
+        sectorsDraft.splice(i,1);
+        renderSectorRows();
+      });
+    });
+  }
+
+  document.getElementById('addSectorBtn').addEventListener('click', function(){
+    sectorsDraft.push({ id: uid(), nome:'Novo setor', cor:'#8C7B6E', instrucoesEmbalagem:false });
+    renderSectorRows();
+  });
+  document.getElementById('sectorCancelBtn').addEventListener('click', closeSectorModal);
+  document.getElementById('sectorModalScrim').addEventListener('click', closeSectorModal);
+  document.getElementById('sectorSaveBtn').addEventListener('click', function(){
+    const cleaned = sectorsDraft.filter(function(s){ return s.nome && s.nome.trim(); });
+    persistSectors(cleaned);
+    closeSectorModal();
+  });
+
+  /* ---------------- wiring ---------------- */
+
+  document.querySelectorAll('.view-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.view-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      currentView = btn.getAttribute('data-view');
+      render();
+    });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', function(e){ filters.q = e.target.value; render(); });
+  document.getElementById('sectorFilter').addEventListener('change', function(e){ filters.sector = e.target.value; render(); });
+  document.getElementById('estadoFilter').addEventListener('change', function(e){ filters.estado = e.target.value; render(); });
+
+  document.querySelectorAll('table.grid th[data-key]').forEach(function(th){
+    th.addEventListener('click', function(){
+      const key = th.getAttribute('data-key');
+      if(sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortKey = key; sortDir = 'asc'; }
+      render();
+    });
+  });
+
+  document.getElementById('f_sector').addEventListener('change', updateSectorSpecificUI);
+  document.getElementById('addObjetivoBtn').addEventListener('click', function(){
+    objetivosDraft.push({ quantidade:null, data:null, concluido:false });
+    renderObjetivosRows();
+  });
+  document.getElementById('f_produzido').addEventListener('input', function(e){
+    const val = e.target.value === '' ? 0 : Number(e.target.value);
+    objetivosDraft = autoCheckObjetivos(objetivosDraft, val);
+    renderObjetivosRows();
+  });
+
+  document.getElementById('newOrderBtn').addEventListener('click', function(){ openEditor(null); });
+  document.getElementById('manageSectorsBtn').addEventListener('click', openSectorModal);
+  document.getElementById('panelClose').addEventListener('click', closeEditor);
+  document.getElementById('cancelOrderBtn').addEventListener('click', closeEditor);
+  document.getElementById('scrim').addEventListener('click', closeEditor);
+
+  document.getElementById('saveOrderBtn').addEventListener('click', function(){
+    const data = collectForm();
+    if(!data.produto && !data.numero){
+      toast('Indique pelo menos o código ou o produto.', true);
+      return;
+    }
+    persistOrder(editingId, data);
+    closeEditor();
+  });
+  document.getElementById('deleteOrderBtn').addEventListener('click', function(){
+    if(editingId && confirm('Eliminar esta encomenda?')){
+      removeOrder(editingId);
+      closeEditor();
+    }
+  });
+
+  const authorInput = document.getElementById('authorInput');
+  authorInput.value = authorName();
+  authorInput.addEventListener('change', function(e){
+    try{ localStorage.setItem('csp4_fluxo_autor', e.target.value.trim()); }catch(err){}
+  });
+
+  render();
+  startAuth();
+})();
+</script>
+</body>
+</html>
