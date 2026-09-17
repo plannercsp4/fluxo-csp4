@@ -133,6 +133,15 @@
   .obj-row.done .obj-check{background:var(--good);border-color:var(--good);}
   .obj-progress{font-size:10.5px;color:var(--ink-dim);padding:2px 4px;}
   .pack-note{font-size:11.5px;background:var(--surface-2);border-left:3px solid var(--accent);color:var(--ink);border-radius:5px;padding:6px 8px;white-space:pre-wrap;}
+  .ord-tipo-badge{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:999px;letter-spacing:.02em;}
+  .ord-tipo-badge.lav{background:var(--info-bg);color:var(--info);}
+  .ord-tipo-badge.ee{background:var(--warn-bg);color:var(--warn);}
+  .tag-list{display:flex;flex-wrap:wrap;gap:5px;}
+  .tag-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+  .tags-picker{display:flex;flex-wrap:wrap;gap:6px;}
+  .tag-chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink-dim);}
+  .tag-chip.active{color:#fff;}
+  .tags-empty-hint{font-size:11.5px;color:var(--ink-dim);}
 
   /* ---------- grid/table ---------- */
   .grid-wrap{overflow:auto;max-height:calc(100vh - 180px);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);}
@@ -244,6 +253,7 @@
       <div class="spacer"></div>
       <div class="author"><label>Eu: <input id="authorInput" placeholder="o seu nome"></label></div>
       <button class="btn small" id="signOutBtn" title="Terminar sessão">Sair</button>
+      <button class="btn" id="manageTagsBtn">Tags</button>
       <button class="btn" id="manageSectorsBtn">Setores</button>
       <button class="btn primary" id="newOrderBtn">+ Nova encomenda</button>
     </div>
@@ -286,13 +296,18 @@
       <fieldset>
         <legend>Identificação</legend>
         <div class="field-row">
-          <div class="field"><label for="f_numero">Ordem / Código</label><input id="f_numero" type="text" placeholder="ex: 45016544 ou TCM0+0M-…"></div>
+          <div class="field" id="numeroFieldWrap"><label for="f_numero">Ordem / Código</label><input id="f_numero" type="text" placeholder="ex: 45016544 ou TCM0+0M-…"></div>
           <div class="field"><label for="f_cliente">Cliente</label><input id="f_cliente" type="text"></div>
         </div>
         <div class="field-row">
           <div class="field"><label for="f_produto">Produto</label><input id="f_produto" type="text"></div>
           <div class="field"><label for="f_material">Material</label><input id="f_material" type="text"></div>
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Tags</legend>
+        <div id="tagsPicker" class="tags-picker"></div>
       </fieldset>
 
       <fieldset>
@@ -320,18 +335,27 @@
 
       <fieldset>
         <legend>Quantidades e datas</legend>
-        <div class="field-row">
+        <div id="datasNormaisRow" class="field-row">
           <div class="field"><label for="f_dini">Data início requerida</label><input id="f_dini" type="date"></div>
           <div class="field"><label for="f_dprev">Data prevista fim</label><input id="f_dprev" type="date"></div>
         </div>
-        <div class="field-row">
+        <div id="dataFimReqSection" class="field" hidden>
+          <label for="f_dataFimReqDireta">Data fim requerida</label>
+          <input id="f_dataFimReqDireta" type="date">
+        </div>
+        <div id="qtyFieldsRow" class="field-row">
           <div class="field"><label for="f_produzido">Quantidade produzida</label><input id="f_produzido" type="number" min="0" step="1"></div>
           <div class="field"><label for="f_qreqTotal">Quantidade requerida (total)</label><input id="f_qreqTotal" type="text" disabled></div>
         </div>
-        <div>
+        <div id="objetivosBlock">
           <label>Objetivos (quantidade por data)</label>
           <div id="objetivosRows"></div>
           <button class="btn small" id="addObjetivoBtn" type="button">+ Adicionar objetivo</button>
+        </div>
+        <div id="ordensSection" hidden>
+          <label>Ordens (LAV / EE)</label>
+          <div id="ordensRows"></div>
+          <button class="btn small" id="addOrdemBtn" type="button">+ Adicionar ordem</button>
         </div>
       </fieldset>
 
@@ -375,6 +399,19 @@
   </div>
 </div>
 
+<div id="tagModal" class="modal" hidden>
+  <div class="modal-scrim" id="tagModalScrim"></div>
+  <div class="modal-card">
+    <h2>Tags</h2>
+    <div id="tagRows"></div>
+    <button class="btn small" id="addTagBtn" type="button">+ Adicionar tag</button>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+      <button class="btn" id="tagCancelBtn" type="button">Cancelar</button>
+      <button class="btn primary" id="tagSaveBtn" type="button">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast" hidden></div>
 
 <!-- Firebase (compat build — same API shape used below, no build step needed) -->
@@ -399,11 +436,12 @@
   "use strict";
 
   const DEFAULT_SECTORS = [
-    { id:'bartops', nome:'Bartops', cor:'#B5652D', instrucoesEmbalagem:false },
-    { id:'lavacao', nome:'Lavação', cor:'#2E7D6B', instrucoesEmbalagem:true },
-    { id:'escolha', nome:'Escolha', cor:'#A6752A', instrucoesEmbalagem:true },
-    { id:'outros', nome:'Outros', cor:'#746F6D', instrucoesEmbalagem:false },
+    { id:'bartops', nome:'Bartops', cor:'#B5652D', instrucoesEmbalagem:false, tipo:'normal' },
+    { id:'lavacao', nome:'Lavação', cor:'#2E7D6B', instrucoesEmbalagem:true, tipo:'normal' },
+    { id:'escolha', nome:'Escolha', cor:'#A6752A', instrucoesEmbalagem:true, tipo:'normal' },
+    { id:'outros', nome:'Outros', cor:'#746F6D', instrucoesEmbalagem:false, tipo:'normal' },
   ];
+  const ORDEM_TIPOS = ['LAV','EE'];
 
   const ESTADOS = {
     planeado:  { label:'Planeado',  tone:'info' },
@@ -416,12 +454,15 @@
   let dbMode = 'checking'; // checking | live | offline
   let subscribed = false;
   let sectors = DEFAULT_SECTORS.slice();
+  let tags = [];
   let ordersById = new Map();
   let filters = { q:'', sector:'all', estado:'all' };
   let currentView = 'quadro';
   let sortKey = 'dataFimReq', sortDir = 'asc';
   let editingId = null;
   let objetivosDraft = [];
+  let ordensDraft = [];
+  let tagsSelectedDraft = [];
 
   function esc(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -442,7 +483,7 @@
   function fmtDate(s){
     if(!s) return '—';
     const p = s.split('-'); if(p.length!==3) return s;
-    return p[2]+'/'+p[1];
+    return p[2]+'/'+p[1]+'/'+p[0];
   }
   function daysUntil(s){
     if(!s) return null;
@@ -453,6 +494,15 @@
   function sectorName(id){ const s = sectorById(id); return s ? s.nome : (id ? id : '—'); }
   function sectorColor(id){ const s = sectorById(id); return s ? s.cor : '#8C7B6E'; }
   function sectorFlags(id){ const s = sectorById(id); return { pack: !!(s && s.instrucoesEmbalagem) }; }
+  function sectorTipo(id){ const s = sectorById(id); return (s && s.tipo === 'projeto') ? 'projeto' : 'normal'; }
+  function tituloFromMaterial(material){
+    if(!material) return null;
+    const parts = material.split('-').map(function(p){ return p.trim(); }).filter(Boolean);
+    if(!parts.length) return null;
+    const tipo = parts[0];
+    const calibre = parts.find(function(p){ return /^\d+X\d+$/i.test(p); });
+    return calibre ? (tipo + ' ' + calibre.toUpperCase()) : tipo;
+  }
   function uid(){ return 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
   function nowISO(){ return new Date().toISOString(); }
   function authorName(){
@@ -609,11 +659,12 @@
       if(data && Array.isArray(data.list) && data.list.length){
         let migrated = false;
         sectors = data.list.map(function(s){
-          if('instrucoesEmbalagem' in s) return s;
+          if('instrucoesEmbalagem' in s && 'tipo' in s) return s;
           migrated = true;
           const def = DEFAULT_SECTORS.find(function(d){ return d.id === s.id; });
           return Object.assign({
             instrucoesEmbalagem: def ? def.instrucoesEmbalagem : false,
+            tipo: def ? def.tipo : 'normal',
           }, s);
         });
         if(migrated){
@@ -650,6 +701,12 @@
       });
       render();
     }, function(err){ console.error('orders', err); toast('Erro a sincronizar encomendas.', true); });
+
+    db.doc('tags/list').onSnapshot(function(snap){
+      const data = snap.exists ? snap.data() : null;
+      tags = (data && Array.isArray(data.list)) ? data.list : [];
+      render();
+    }, function(err){ console.error('tags', err); });
   }
 
   function showBanner(msg){
@@ -664,6 +721,16 @@
       try{
         await db.doc('config/sectors').set({ list: list, atualizadoEm: nowISO() });
       }catch(e){ toast('Erro ao guardar setores.', true); }
+    }
+    render();
+  }
+
+  async function persistTags(list){
+    tags = list;
+    if(dbMode === 'live' && db){
+      try{
+        await db.doc('tags/list').set({ list: list, atualizadoEm: nowISO() });
+      }catch(e){ toast('Erro ao guardar tags.', true); }
     }
     render();
   }
@@ -715,6 +782,18 @@
     const quantidadeAtual = list.reduce(function(sum,g){ return sum + (g.concluido ? (g.quantidade||0) : 0); }, 0);
     const allDone = list.every(function(g){ return g.concluido; });
     const patch = { objetivos: list, quantidadeAtual: quantidadeAtual };
+    if(allDone) patch.estado = 'concluido';
+    else if(o.estado === 'concluido') patch.estado = 'em_curso';
+    persistOrder(orderId, patch);
+  }
+
+  function toggleOrdemItem(orderId, idx){
+    const o = ordersById.get(orderId);
+    if(!o || !Array.isArray(o.ordens) || !o.ordens[idx]) return;
+    const list = o.ordens.map(function(r){ return Object.assign({}, r); });
+    list[idx].concluido = !list[idx].concluido;
+    const allDone = list.length > 0 && list.every(function(r){ return r.concluido; });
+    const patch = { ordens: list };
     if(allDone) patch.estado = 'concluido';
     else if(o.estado === 'concluido') patch.estado = 'em_curso';
     persistOrder(orderId, patch);
@@ -804,22 +883,38 @@
     const downstreamSectors = [...new Set([...ordersById.values()].filter(function(x){return x.linkedFromOrderId===o._id;}).map(function(x){return sectorName(x.sectorId);}))];
     const checked = o.estado === 'concluido';
     const ti = checked ? null : timeInfo(o);
+    const isProjeto = sectorTipo(o.sectorId) === 'projeto';
     let html = '<div class="card" data-id="'+esc(o._id)+'">';
     if(ti){
       html += '<div class="time-row"><div class="time-progress"><i class="'+ti.tone+'" style="width:'+ti.pct+'%;"></i></div><span class="time-label '+ti.tone+'">'+esc(ti.label)+'</span></div>';
     }
     html += '<div class="card-top"><button class="check '+(checked?'checked':sem)+'" data-toggle-done="'+esc(o._id)+'" title="'+(checked?'Marcar como não concluído':'Marcar como concluído')+'">'+(checked?'✓':'')+'</button>';
     html += '<span class="pill '+est.tone+'">'+esc(est.label)+(isAtrasado(o)?' · atrasado':'')+'</span></div>';
-    html += '<div class="card-title">'+esc(o.cliente||'(sem cliente)')+(o.material?(' · '+esc(o.material)):'')+'</div>';
-    html += '<div class="card-sub">'+esc(o.produto||'(sem produto)')+(o.numero?(' <span class="mono">· '+esc(o.numero)+'</span>'):'')+'</div>';
-    if(pct !== null){
-      html += '<div class="progress-row"><div class="progress"><i style="width:'+pct+'%;"></i></div><span class="progress-label">'+pct+'%</span></div>';
-      html += '<div class="qty-row" data-order="'+esc(o._id)+'"><span>Produzido</span>'
-        + '<input type="number" class="qty-input" min="0" step="1" value="'+(o.quantidadeAtual!=null?o.quantidadeAtual:0)+'" data-qty-order="'+esc(o._id)+'">'
-        + '<span class="qty-total">/ '+fmtNum(o.quantidadeReq)+'</span></div>';
+    if(isProjeto){
+      html += '<div class="card-title">'+esc(tituloFromMaterial(o.material) || o.material || '(sem material)')+'</div>';
+      html += '<div class="card-sub">Fim req.: <b>'+fmtDate(o.dataFimReq)+'</b></div>';
+    } else {
+      html += '<div class="card-title">'+esc(o.cliente||'(sem cliente)')+(o.material?(' · '+esc(o.material)):'')+'</div>';
+      html += '<div class="card-sub">'+esc(o.produto||'(sem produto)')+(o.numero?(' <span class="mono">· '+esc(o.numero)+'</span>'):'')+'</div>';
+      if(pct !== null){
+        html += '<div class="progress-row"><div class="progress"><i style="width:'+pct+'%;"></i></div><span class="progress-label">'+pct+'%</span></div>';
+        html += '<div class="qty-row" data-order="'+esc(o._id)+'"><span>Produzido</span>'
+          + '<input type="number" class="qty-input" min="0" step="1" value="'+(o.quantidadeAtual!=null?o.quantidadeAtual:0)+'" data-qty-order="'+esc(o._id)+'">'
+          + '<span class="qty-total">/ '+fmtNum(o.quantidadeReq)+'</span></div>';
+      }
+      html += '<div class="card-dates"><span>Fim req.: <b>'+fmtDate(o.dataFimReq)+'</b></span><span>Prev.: <b>'+fmtDate(o.dataFimPrevista)+'</b></span></div>';
     }
-    html += '<div class="card-dates"><span>Fim req.: <b>'+fmtDate(o.dataFimReq)+'</b></span><span>Prev.: <b>'+fmtDate(o.dataFimPrevista)+'</b></span></div>';
-    if(o.objetivos && o.objetivos.length){
+    if(isProjeto){
+      if(o.ordens && o.ordens.length){
+        const doneCount = o.ordens.filter(function(r){ return r.concluido; }).length;
+        html += '<div class="obj-list">' + o.ordens.map(function(r,ri){
+          return '<div class="obj-row'+(r.concluido?' done':'')+'" data-ordem="'+esc(o._id)+'" data-idx="'+ri+'">'
+            + '<span class="obj-check">'+(r.concluido?'✓':'')+'</span>'
+            + '<span>'+esc(r.numero||'—')+' <span class="ord-tipo-badge '+(r.tipo==='EE'?'ee':'lav')+'">'+esc(r.tipo)+'</span></span>'
+            + '</div>';
+        }).join('') + '<div class="obj-progress">'+doneCount+'/'+o.ordens.length+' concluídas</div></div>';
+      }
+    } else if(o.objetivos && o.objetivos.length){
       const doneCount = o.objetivos.filter(function(g){ return g.concluido; }).length;
       html += '<div class="obj-list">' + o.objetivos.map(function(g,gi){
         return '<div class="obj-row'+(g.concluido?' done':'')+'" data-order="'+esc(o._id)+'" data-idx="'+gi+'">'
@@ -838,6 +933,14 @@
     }
     if(downstreamSectors.length){
       html += '<div class="downstream-tag">→ Alimenta: '+downstreamSectors.map(esc).join(', ')+'</div>';
+    }
+    if(o.tagIds && o.tagIds.length){
+      const activeTags = o.tagIds.map(function(id){ return tags.find(function(t){ return t.id===id; }); }).filter(Boolean);
+      if(activeTags.length){
+        html += '<div class="tag-list">' + activeTags.map(function(t){
+          return '<span class="tag-pill" style="background:'+esc(t.cor)+'22;color:'+esc(t.cor)+';border:1px solid '+esc(t.cor)+'55;">'+esc(t.nome)+'</span>';
+        }).join('') + '</div>';
+      }
     }
     html += '</div>';
     return html;
@@ -896,6 +999,12 @@
       row.addEventListener('click', function(e){
         e.stopPropagation();
         toggleObjetivo(row.getAttribute('data-order'), Number(row.getAttribute('data-idx')));
+      });
+    });
+    container.querySelectorAll('.obj-row[data-ordem]').forEach(function(row){
+      row.addEventListener('click', function(e){
+        e.stopPropagation();
+        toggleOrdemItem(row.getAttribute('data-ordem'), Number(row.getAttribute('data-idx')));
       });
     });
     container.querySelectorAll('[data-qty-order]').forEach(function(inp){
@@ -986,9 +1095,62 @@
     updateQtyTotalDisplay();
   }
 
+  function renderOrdensRows(){
+    const wrap = document.getElementById('ordensRows');
+    wrap.innerHTML = ordensDraft.map(function(r,i){
+      return '<div class="obj-edit-row" data-i="'+i+'">'
+        + '<input type="text" placeholder="Número da ordem" data-role="n" value="'+esc(r.numero||'')+'">'
+        + '<select data-role="t">'
+        + '<option value="LAV"'+(r.tipo!=='EE'?' selected':'')+'>LAV</option>'
+        + '<option value="EE"'+(r.tipo==='EE'?' selected':'')+'>EE</option>'
+        + '</select>'
+        + '<label class="obj-edit-check"><input type="checkbox" data-role="c"'+(r.concluido?' checked':'')+'> Concluída</label>'
+        + '<button type="button" data-role="del" title="Remover ordem">&times;</button>'
+        + '</div>';
+    }).join('');
+    wrap.querySelectorAll('.obj-edit-row').forEach(function(row){
+      const i = Number(row.getAttribute('data-i'));
+      row.querySelector('[data-role="n"]').addEventListener('input', function(e){ ordensDraft[i].numero = e.target.value; });
+      row.querySelector('[data-role="t"]').addEventListener('change', function(e){ ordensDraft[i].tipo = e.target.value; });
+      row.querySelector('[data-role="c"]').addEventListener('change', function(e){ ordensDraft[i].concluido = e.target.checked; });
+      row.querySelector('[data-role="del"]').addEventListener('click', function(){ ordensDraft.splice(i,1); renderOrdensRows(); });
+    });
+  }
+
+  function renderTagsPicker(){
+    const wrap = document.getElementById('tagsPicker');
+    if(!tags.length){
+      wrap.innerHTML = '<span class="tags-empty-hint">Sem tags criadas — use o botão "Tags" no topo para criar.</span>';
+      return;
+    }
+    wrap.innerHTML = tags.map(function(t){
+      const active = tagsSelectedDraft.indexOf(t.id) !== -1;
+      const style = active
+        ? ('background:'+esc(t.cor)+';border-color:'+esc(t.cor)+';')
+        : ('border-color:'+esc(t.cor)+';color:'+esc(t.cor)+';');
+      return '<button type="button" class="tag-chip'+(active?' active':'')+'" data-tag="'+esc(t.id)+'" style="'+style+'">'+esc(t.nome)+'</button>';
+    }).join('');
+    wrap.querySelectorAll('.tag-chip').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const id = btn.getAttribute('data-tag');
+        const idx = tagsSelectedDraft.indexOf(id);
+        if(idx === -1) tagsSelectedDraft.push(id); else tagsSelectedDraft.splice(idx,1);
+        renderTagsPicker();
+      });
+    });
+  }
+
   function updateSectorSpecificUI(){
-    const flags = sectorFlags(document.getElementById('f_sector').value);
+    const sectorId = document.getElementById('f_sector').value;
+    const flags = sectorFlags(sectorId);
+    const isProjeto = sectorTipo(sectorId) === 'projeto';
     document.getElementById('embalagemSection').hidden = !flags.pack;
+    document.getElementById('numeroFieldWrap').hidden = isProjeto;
+    document.getElementById('datasNormaisRow').hidden = isProjeto;
+    document.getElementById('qtyFieldsRow').hidden = isProjeto;
+    document.getElementById('objetivosBlock').hidden = isProjeto;
+    document.getElementById('dataFimReqSection').hidden = !isProjeto;
+    document.getElementById('ordensSection').hidden = !isProjeto;
   }
 
   function openEditor(id, presetSectorId){
@@ -1018,11 +1180,19 @@
     document.getElementById('f_obsprod').value = o ? (o.obsProduto||'') : '';
     document.getElementById('f_embalagem').value = o ? (o.instrucoesEmbalagem||'') : '';
     document.getElementById('f_produzido').value = o && o.quantidadeAtual!=null ? o.quantidadeAtual : 0;
+    document.getElementById('f_dataFimReqDireta').value = o ? (o.dataFimReq||'') : '';
 
     objetivosDraft = (o && Array.isArray(o.objetivos) && o.objetivos.length)
       ? o.objetivos.map(function(g){ return Object.assign({}, g); })
       : [{ quantidade: o ? o.quantidadeReq : null, data: o ? o.dataFimReq : null, concluido: o ? o.estado === 'concluido' : false }];
     renderObjetivosRows();
+
+    ordensDraft = (o && Array.isArray(o.ordens)) ? o.ordens.map(function(r){ return Object.assign({}, r); }) : [];
+    renderOrdensRows();
+
+    tagsSelectedDraft = (o && Array.isArray(o.tagIds)) ? o.tagIds.slice() : [];
+    renderTagsPicker();
+
     updateSectorSpecificUI();
 
     document.getElementById('editPanel').classList.add('open');
@@ -1038,15 +1208,36 @@
   function collectForm(){
     const sectorId = document.getElementById('f_sector').value;
     const flags = sectorFlags(sectorId);
-    const valid = objetivosDraft.filter(function(g){ return g.quantidade!=null || g.data; });
-    const quantidadeReq = valid.reduce(function(sum,g){ return sum + (g.quantidade||0); }, 0);
-    const produzidoInput = document.getElementById('f_produzido').value;
-    const quantidadeAtual = produzidoInput === '' ? 0 : Number(produzidoInput);
-    const dates = valid.map(function(g){ return g.data; }).filter(Boolean).sort();
-    const dataFimReq = dates.length ? dates[dates.length-1] : null;
-    const objetivos = valid;
+    const isProjeto = sectorTipo(sectorId) === 'projeto';
+
+    let numero, quantidadeReq, quantidadeAtual, objetivos, dataInicioReq, dataFimPrevista, dataFimReq, ordens;
+    if(isProjeto){
+      numero = '';
+      quantidadeReq = null;
+      quantidadeAtual = null;
+      objetivos = null;
+      dataInicioReq = null;
+      dataFimPrevista = null;
+      dataFimReq = document.getElementById('f_dataFimReqDireta').value || null;
+      ordens = ordensDraft
+        .filter(function(r){ return r.numero && r.numero.trim(); })
+        .map(function(r){ return { numero: r.numero.trim(), tipo: r.tipo === 'EE' ? 'EE' : 'LAV', concluido: !!r.concluido }; });
+    } else {
+      numero = document.getElementById('f_numero').value.trim();
+      const valid = objetivosDraft.filter(function(g){ return g.quantidade!=null || g.data; });
+      quantidadeReq = valid.reduce(function(sum,g){ return sum + (g.quantidade||0); }, 0);
+      const produzidoInput = document.getElementById('f_produzido').value;
+      quantidadeAtual = produzidoInput === '' ? 0 : Number(produzidoInput);
+      const dates = valid.map(function(g){ return g.data; }).filter(Boolean).sort();
+      dataFimReq = dates.length ? dates[dates.length-1] : null;
+      objetivos = valid;
+      dataInicioReq = document.getElementById('f_dini').value || null;
+      dataFimPrevista = document.getElementById('f_dprev').value || null;
+      ordens = null;
+    }
+
     return {
-      numero: document.getElementById('f_numero').value.trim(),
+      numero: numero,
       cliente: document.getElementById('f_cliente').value.trim(),
       produto: document.getElementById('f_produto').value.trim(),
       material: document.getElementById('f_material').value.trim(),
@@ -1058,10 +1249,12 @@
       quantidadeReq: quantidadeReq,
       quantidadeAtual: quantidadeAtual,
       objetivos: objetivos,
+      ordens: ordens,
+      tagIds: tagsSelectedDraft.slice(),
       instrucoesEmbalagem: flags.pack ? document.getElementById('f_embalagem').value : '',
-      dataInicioReq: document.getElementById('f_dini').value || null,
+      dataInicioReq: dataInicioReq,
       dataFimReq: dataFimReq,
-      dataFimPrevista: document.getElementById('f_dprev').value || null,
+      dataFimPrevista: dataFimPrevista,
       notasPlaneador: document.getElementById('f_notasplan').value,
       notasProducao: document.getElementById('f_notasprod').value,
       obsGerais: document.getElementById('f_obsgerais').value,
@@ -1096,6 +1289,7 @@
         + '<button class="btn small danger" type="button" data-role="del">Remover</button>'
         + '</div>'
         + '<div class="sector-row-flags">'
+        + '<label>Tipo: <select data-role="tipo"><option value="normal"'+((s.tipo||'normal')==='normal'?' selected':'')+'>Normal</option><option value="projeto"'+(s.tipo==='projeto'?' selected':'')+'>Projeto (várias ordens)</option></select></label>'
         + '<label><input type="checkbox" data-role="pack"'+(s.instrucoesEmbalagem?' checked':'')+'> Instruções de embalagem</label>'
         + '</div>'
         + '</div>';
@@ -1105,6 +1299,7 @@
       row.querySelector('[data-role="cor"]').addEventListener('input', function(e){ sectorsDraft[i].cor = e.target.value; });
       row.querySelector('[data-role="nome"]').addEventListener('input', function(e){ sectorsDraft[i].nome = e.target.value; });
       row.querySelector('[data-role="pack"]').addEventListener('change', function(e){ sectorsDraft[i].instrucoesEmbalagem = e.target.checked; });
+      row.querySelector('[data-role="tipo"]').addEventListener('change', function(e){ sectorsDraft[i].tipo = e.target.value; });
       row.querySelector('[data-role="up"]').addEventListener('click', function(){
         if(i===0) return;
         const tmp = sectorsDraft[i-1]; sectorsDraft[i-1] = sectorsDraft[i]; sectorsDraft[i] = tmp;
@@ -1125,7 +1320,7 @@
   }
 
   document.getElementById('addSectorBtn').addEventListener('click', function(){
-    sectorsDraft.push({ id: uid(), nome:'Novo setor', cor:'#8C7B6E', instrucoesEmbalagem:false });
+    sectorsDraft.push({ id: uid(), nome:'Novo setor', cor:'#8C7B6E', instrucoesEmbalagem:false, tipo:'normal' });
     renderSectorRows();
   });
   document.getElementById('sectorCancelBtn').addEventListener('click', closeSectorModal);
@@ -1134,6 +1329,52 @@
     const cleaned = sectorsDraft.filter(function(s){ return s.nome && s.nome.trim(); });
     persistSectors(cleaned);
     closeSectorModal();
+  });
+
+  /* ---------------- tag manager ---------------- */
+
+  let tagsDraft = [];
+
+  function openTagModal(){
+    tagsDraft = tags.map(function(t){ return Object.assign({}, t); });
+    renderTagRows();
+    document.getElementById('tagModal').hidden = false;
+  }
+  function closeTagModal(){ document.getElementById('tagModal').hidden = true; }
+
+  function renderTagRows(){
+    const wrap = document.getElementById('tagRows');
+    wrap.innerHTML = tagsDraft.map(function(t,i){
+      return '<div class="sector-row" data-i="'+i+'">'
+        + '<div class="sector-row-main">'
+        + '<input type="color" value="'+esc(t.cor)+'" data-role="cor">'
+        + '<input type="text" value="'+esc(t.nome)+'" data-role="nome">'
+        + '<button class="btn small danger" type="button" data-role="del">Remover</button>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+    wrap.querySelectorAll('.sector-row').forEach(function(row){
+      const i = Number(row.getAttribute('data-i'));
+      row.querySelector('[data-role="cor"]').addEventListener('input', function(e){ tagsDraft[i].cor = e.target.value; });
+      row.querySelector('[data-role="nome"]').addEventListener('input', function(e){ tagsDraft[i].nome = e.target.value; });
+      row.querySelector('[data-role="del"]').addEventListener('click', function(){
+        tagsDraft.splice(i,1);
+        renderTagRows();
+      });
+    });
+  }
+
+  document.getElementById('manageTagsBtn').addEventListener('click', openTagModal);
+  document.getElementById('addTagBtn').addEventListener('click', function(){
+    tagsDraft.push({ id: uid(), nome:'Nova tag', cor:'#B5790E' });
+    renderTagRows();
+  });
+  document.getElementById('tagCancelBtn').addEventListener('click', closeTagModal);
+  document.getElementById('tagModalScrim').addEventListener('click', closeTagModal);
+  document.getElementById('tagSaveBtn').addEventListener('click', function(){
+    const cleaned = tagsDraft.filter(function(t){ return t.nome && t.nome.trim(); });
+    persistTags(cleaned);
+    closeTagModal();
   });
 
   /* ---------------- wiring ---------------- */
@@ -1164,6 +1405,10 @@
   document.getElementById('addObjetivoBtn').addEventListener('click', function(){
     objetivosDraft.push({ quantidade:null, data:null, concluido:false });
     renderObjetivosRows();
+  });
+  document.getElementById('addOrdemBtn').addEventListener('click', function(){
+    ordensDraft.push({ numero:'', tipo:'LAV', concluido:false });
+    renderOrdensRows();
   });
   document.getElementById('f_produzido').addEventListener('input', function(e){
     const val = e.target.value === '' ? 0 : Number(e.target.value);
