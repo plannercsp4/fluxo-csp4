@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fluxo CSP4</title>
+<title>Planeamento Produção CSP4</title>
 <link rel="icon" href="corksupply-icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,7 +50,7 @@
   .brand-mark{width:26px;height:26px;display:block;}
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand-mark{filter:contrast(.83) brightness(1.7);} }
   :root[data-theme="dark"] .brand-mark{filter:contrast(.83) brightness(1.7);}
-  .brand h1{font-size:20px;font-weight:700;}
+  .brand h1{font-size:17px;font-weight:700;white-space:nowrap;}
   .views{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px;}
   .view-btn{border:none;background:transparent;color:var(--ink-dim);padding:6px 14px;border-radius:999px;font-weight:600;font-size:13px;cursor:pointer;}
   .view-btn.active{background:var(--surface);color:var(--ink);box-shadow:var(--shadow);}
@@ -87,6 +87,16 @@
   /* ---------- card ---------- */
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 12px;cursor:pointer;display:flex;flex-direction:column;gap:8px;}
   .card:hover{border-color:var(--accent);}
+  .time-row{display:flex;align-items:center;gap:8px;}
+  .time-progress{flex:1;height:5px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;}
+  .time-progress > i{display:block;height:100%;border-radius:999px 0 0 999px;}
+  .time-progress > i.good{background:var(--good);}
+  .time-progress > i.warn{background:var(--warn);}
+  .time-progress > i.bad{background:var(--bad);}
+  .time-label{font-size:10.5px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .time-label.good{color:var(--good);}
+  .time-label.warn{color:var(--warn);}
+  .time-label.bad{color:var(--bad);}
   .card-top{display:flex;align-items:center;justify-content:space-between;gap:7px;}
   .check{width:19px;height:19px;border-radius:50%;flex:none;border:2px solid var(--line);background:var(--surface);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:transparent;}
   .check:hover{filter:brightness(0.95);}
@@ -160,6 +170,10 @@
   .sector-row{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line);}
   .sector-row:last-child{border-bottom:none;}
   .sector-row-main{display:flex;align-items:center;gap:8px;}
+  .sector-reorder{display:flex;flex-direction:column;gap:2px;flex:none;}
+  .sector-reorder button{width:22px;height:16px;font-size:10px;line-height:1;padding:0;border:1px solid var(--line);background:var(--surface);border-radius:4px;cursor:pointer;color:var(--ink-dim);}
+  .sector-reorder button:disabled{opacity:.3;cursor:default;}
+  .sector-reorder button:not(:disabled):hover{border-color:var(--accent);color:var(--accent);}
   .sector-row input[type="color"]{width:32px;height:32px;padding:0;border:1px solid var(--line);border-radius:7px;background:none;flex:none;}
   .sector-row input[type="text"]{flex:1;}
   .sector-row-flags{display:flex;flex-wrap:wrap;gap:4px 14px;padding-left:40px;}
@@ -198,7 +212,7 @@
 <div id="loginOverlay" class="modal">
   <div class="modal-scrim"></div>
   <div class="modal-card">
-    <div class="brand"><img class="brand-mark" src="corksupply-icon.svg" alt="Cork Supply"><h1>Fluxo CSP4</h1></div>
+    <div class="brand"><img class="brand-mark" src="corksupply-icon.svg" alt="Cork Supply"><h1>Planeamento Produção CSP4</h1></div>
     <form id="loginForm">
       <div class="field"><label for="li_email">E-mail</label><input id="li_email" type="email" required autocomplete="username"></div>
       <div class="field"><label for="li_pass">Palavra-passe</label><input id="li_pass" type="password" required autocomplete="current-password"></div>
@@ -211,7 +225,7 @@
 <div class="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="brand"><img class="brand-mark" src="corksupply-icon.svg" alt="Cork Supply" width="26" height="26"><h1>Fluxo CSP4</h1></div>
+      <div class="brand"><img class="brand-mark" src="corksupply-icon.svg" alt="Cork Supply" width="26" height="26"><h1>Planeamento Produção CSP4</h1></div>
       <nav class="views">
         <button class="view-btn active" data-view="quadro">Quadro</button>
         <button class="view-btn" data-view="grelha">Grelha</button>
@@ -488,6 +502,35 @@
     return o.quantidadeAtual || 0;
   }
 
+  function timeInfo(o){
+    if(!o.dataFimReq) return null;
+    const days = daysUntil(o.dataFimReq);
+    let tone = 'good';
+    if(days < 0) tone = 'bad';
+    else if(days <= 2) tone = 'warn';
+    let label;
+    if(days < 0) label = Math.abs(days) + (Math.abs(days)===1?' dia atrasado':' dias atrasado');
+    else if(days === 0) label = 'Vence hoje';
+    else label = days + (days===1?' dia':' dias');
+    let pct;
+    if(o.dataInicioReq){
+      const start = new Date(o.dataInicioReq+'T00:00:00').getTime();
+      const end = new Date(o.dataFimReq+'T00:00:00').getTime();
+      const now = new Date(todayISO()+'T00:00:00').getTime();
+      pct = end > start ? Math.round(((now-start)/(end-start))*100) : (days<=0?100:0);
+    } else {
+      pct = days <= 0 ? 100 : Math.round(((7-days)/7)*100);
+    }
+    pct = Math.max(0, Math.min(100, pct));
+    return { pct: pct, tone: tone, label: label };
+  }
+
+  const ADMIN_EMAIL = 'pmcosta@corksupply.pt';
+  function isAdmin(){
+    const u = firebase.apps.length ? firebase.auth().currentUser : null;
+    return !!(u && u.email && u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  }
+
   /* ---------------- auth ---------------- */
 
   function showLogin(){ document.getElementById('loginOverlay').hidden = false; }
@@ -514,6 +557,7 @@
       hideLogin();
       db = firebase.firestore();
       dbMode = 'live';
+      document.getElementById('manageSectorsBtn').hidden = !isAdmin();
       const authorInput = document.getElementById('authorInput');
       if(!authorName() && user.email) authorInput.value = user.email.split('@')[0];
       if(!subscribed){
@@ -759,7 +803,11 @@
     const pred = o.linkedFromOrderId ? ordersById.get(o.linkedFromOrderId) : null;
     const downstreamSectors = [...new Set([...ordersById.values()].filter(function(x){return x.linkedFromOrderId===o._id;}).map(function(x){return sectorName(x.sectorId);}))];
     const checked = o.estado === 'concluido';
+    const ti = checked ? null : timeInfo(o);
     let html = '<div class="card" data-id="'+esc(o._id)+'">';
+    if(ti){
+      html += '<div class="time-row"><div class="time-progress"><i class="'+ti.tone+'" style="width:'+ti.pct+'%;"></i></div><span class="time-label '+ti.tone+'">'+esc(ti.label)+'</span></div>';
+    }
     html += '<div class="card-top"><button class="check '+(checked?'checked':sem)+'" data-toggle-done="'+esc(o._id)+'" title="'+(checked?'Marcar como não concluído':'Marcar como concluído')+'">'+(checked?'✓':'')+'</button>';
     html += '<span class="pill '+est.tone+'">'+esc(est.label)+(isAtrasado(o)?' · atrasado':'')+'</span></div>';
     html += '<div class="card-title">'+esc(o.cliente||'(sem cliente)')+(o.material?(' · '+esc(o.material)):'')+'</div>';
@@ -1027,6 +1075,7 @@
   let sectorsDraft = [];
 
   function openSectorModal(){
+    if(!isAdmin()){ toast('Só o administrador pode gerir setores.', true); return; }
     sectorsDraft = sectors.map(function(s){ return Object.assign({}, s); });
     renderSectorRows();
     document.getElementById('sectorModal').hidden = false;
@@ -1038,6 +1087,10 @@
     wrap.innerHTML = sectorsDraft.map(function(s,i){
       return '<div class="sector-row" data-i="'+i+'">'
         + '<div class="sector-row-main">'
+        + '<div class="sector-reorder">'
+        + '<button type="button" data-role="up" title="Mover para cima"'+(i===0?' disabled':'')+'>&uarr;</button>'
+        + '<button type="button" data-role="down" title="Mover para baixo"'+(i===sectorsDraft.length-1?' disabled':'')+'>&darr;</button>'
+        + '</div>'
         + '<input type="color" value="'+esc(s.cor)+'" data-role="cor">'
         + '<input type="text" value="'+esc(s.nome)+'" data-role="nome">'
         + '<button class="btn small danger" type="button" data-role="del">Remover</button>'
@@ -1052,6 +1105,16 @@
       row.querySelector('[data-role="cor"]').addEventListener('input', function(e){ sectorsDraft[i].cor = e.target.value; });
       row.querySelector('[data-role="nome"]').addEventListener('input', function(e){ sectorsDraft[i].nome = e.target.value; });
       row.querySelector('[data-role="pack"]').addEventListener('change', function(e){ sectorsDraft[i].instrucoesEmbalagem = e.target.checked; });
+      row.querySelector('[data-role="up"]').addEventListener('click', function(){
+        if(i===0) return;
+        const tmp = sectorsDraft[i-1]; sectorsDraft[i-1] = sectorsDraft[i]; sectorsDraft[i] = tmp;
+        renderSectorRows();
+      });
+      row.querySelector('[data-role="down"]').addEventListener('click', function(){
+        if(i===sectorsDraft.length-1) return;
+        const tmp = sectorsDraft[i+1]; sectorsDraft[i+1] = sectorsDraft[i]; sectorsDraft[i] = tmp;
+        renderSectorRows();
+      });
       row.querySelector('[data-role="del"]').addEventListener('click', function(){
         const inUse = [...ordersById.values()].some(function(o){ return o.sectorId === sectorsDraft[i].id; });
         if(inUse && !confirm('Este setor tem encomendas associadas. Remover mesmo assim?')) return;
